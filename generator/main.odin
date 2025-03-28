@@ -152,7 +152,7 @@ main :: proc() {
     textures = make([dynamic]string)
     defer delete(textures)
 
-    output_file, err = os.open(OUTPUT_FILE, os.O_WRONLY | os.O_CREATE, os.S_IWUSR | os.S_IRUSR)
+    output_file, err = os.open(OUTPUT_FILE, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, os.S_IWUSR | os.S_IRUSR)
     if err != nil {
         fmt.eprintfln("[ERROR] Could not open file '%v': %v", OUTPUT_FILE, os.error_string(err))
         return

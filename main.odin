@@ -8,8 +8,6 @@ import "core:strings"
 import "vendor:stb/image"
 import rl "vendor:raylib"
 
-MAX_COMMAND_COUNT :: 65536
-
 nearest_block :: proc(c: rl.Color) -> (result: string) {
     result = blocks[0].name_with_state
     min_length: f32 = 500
@@ -29,7 +27,7 @@ nearest_block :: proc(c: rl.Color) -> (result: string) {
 }
 
 open_file :: proc(file_path: string) -> (os.Handle, bool) {
-    file, err := os.open(file_path, os.O_CREATE | os.O_WRONLY, os.S_IRUSR | os.S_IWUSR)
+    file, err := os.open(file_path, os.O_CREATE | os.O_WRONLY | os.O_TRUNC, os.S_IRUSR | os.S_IWUSR)
     if err != nil {
         fmt.eprintfln("ERROR: Could not open file '%v': %v", file_path, os.error_string(err))
         return file, false
@@ -44,53 +42,39 @@ main :: proc() {
         return
     }
 
-    dir_name := filepath.stem(os.args[1])
-
-    if !os.exists(dir_name) {
-        err := os.make_directory(dir_name, 0o777)
-        if err != nil {
-            fmt.eprintln("ERROR: Could not create directory:", os.error_string(err))
-            return
-        }
-    }
-
     width, height: i32
-    image := image.load(strings.clone_to_cstring(os.args[1]), &width, &height, nil, 3)
-    if image == nil {
-        fmt.eprintln("ERROR: Could not load image")
+    img := image.load(strings.clone_to_cstring(os.args[1]), &width, &height, nil, 3)
+    if img == nil {
+        fmt.eprintln("ERROR: Could not load image:", image.failure_reason())
         return
     }
+    defer image.image_free(img)
 
     fmt.printfln("Loaded image %vx%vx%v", width, height, 3)
     fmt.println("Generating .mcfunction files...")
 
+    output_file, ok := open_file(fmt.tprintf("%v.mcfunction", filepath.stem(os.args[1])))
+    if !ok { return }
+
     cmd_count := 0
-    file_count := 0
-    curr_file, ok := open_file(fmt.tprintf("%v/%x.mcfunction", dir_name, 0))
     if !ok { return }
     for y in 0..<height {
         for x in 0..<width {
             i := (y*width + x) * 3
             color := rl.Color{
-                image[i + 0],
-                image[i + 1],
-                image[i + 2],
+                img[i + 0],
+                img[i + 1],
+                img[i + 2],
                 0xff
             }
 
-            if cmd_count == MAX_COMMAND_COUNT {
-                os.close(curr_file)
-                file_count += 1
-                curr_file, ok = open_file(fmt.tprintf("%v/%x.mcfunction", dir_name, file_count))
-                cmd_count = 0
-            }
-
             cmd_count += 1
-            fmt.fprintfln(curr_file, "setblock ~-%v ~ ~%v %v", y, x, nearest_block(color))
+            fmt.fprintfln(output_file, "setblock ~-%v ~ ~%v %v", y, x, nearest_block(color))
         }
     }
 
-    os.close(curr_file)
+    os.close(output_file)
 
     fmt.println("Done")
+    fmt.printfln("Generated %v commands", cmd_count)
 }

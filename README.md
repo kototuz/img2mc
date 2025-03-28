@@ -10,10 +10,13 @@
 ## Description
 
 The program replaces each pixel with the corresponding block in Minecraft.
-Files that **img2mc** generates are functions that you run in Minecraft
-to build your image. We can't generate just one single `.mcfunction` file
-because Minecraft has a limit on the number of commands in one file - 65536
-(well you can change the limit)
+File that **img2mc** generates is a function that you run in Minecraft
+to build your image.
+
+> [!WARNING]
+> Make sure that `/gamerule maxCommandChainLength <required_count>`.
+> The program will notice you about the generated command count.
+> So copy the number from there
 
 ## Get started
 
